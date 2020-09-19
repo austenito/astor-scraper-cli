@@ -1,20 +1,38 @@
 extern crate reqwest;
 extern crate select;
 
+use clap::App;
 use scraper::{Html, Selector};
 use std::collections::HashMap;
-use url::{ParseError, Url};
+use url::Url;
 
-const ASTOR_URL: &str = "https://www.astorwines.com/WineSearchResult.aspx?search=Advanced&searchtype=Contains&term=&cat=1&saleitemsonly=True&Country=France&Color=White";
+const ASTOR_URL: &str = "https://www.astorwines.com/WineSearchResult.aspx?search=Advanced&searchtype=Contains&term=&cat=1&saleitemsonly=True";
 // &country=France&saleitemsonly=True&color=White&Page=1";
 
 fn main() {
-    fetch_astor_links(ASTOR_URL);
+    let matches = App::new("AstorScraper")
+        .version("1.0")
+        .arg("-p, --country=[Country] 'A country like France or USA'")
+        .arg("-c, --color=[Color] 'A color like red or white'")
+        .arg("-r, --region=[Region] 'A region like Champagne or Burgundy'")
+        .get_matches();
+
+    let mut url = ASTOR_URL.to_string();
+    if let Some(country) = matches.value_of("country") {
+        url = format!("{}&country={}", url, country);
+    }
+    if let Some(color) = matches.value_of("color") {
+        url = format!("{}&color={}", url, color);
+    }
+    if let Some(region) = matches.value_of("region") {
+        url = format!("{}&region={}", url, region);
+    }
+    println!("{}", url);
+
+    fetch_astor_links(&url);
 }
 
 fn fetch_astor_links(url: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // https://www.astorwines.com/WineSearchResult.aspx?p=5&search=Advanced&searchtype=Contains&term=&cat=1&country=France&saleitemsonly=True&color=White&Page=3
-
     let mut done = false;
     let mut current_page = 1;
     let last_page = get_last_page(url);
@@ -59,7 +77,6 @@ fn fetch_astor_links(url: &str) -> Result<(), Box<dyn std::error::Error>> {
         if current_page > last_page {
             done = true;
         }
-        done = true;
     }
     Ok(())
 }
