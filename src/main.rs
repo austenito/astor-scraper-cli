@@ -7,7 +7,15 @@ use std::collections::HashMap;
 use url::Url;
 
 const ASTOR_URL: &str = "https://www.astorwines.com/WineSearchResult.aspx?search=Advanced&searchtype=Contains&term=&cat=1&saleitemsonly=True";
-// &country=France&saleitemsonly=True&color=White&Page=1";
+
+struct Wine {
+    name: String,
+    original_price: String,
+    sale_price: String,
+    discount: String,
+    link: String,
+    location: String,
+}
 
 fn main() {
     let matches = App::new("AstorScraper")
@@ -47,35 +55,49 @@ fn fetch_astor_links(url: &str) -> Result<(), Box<dyn std::error::Error>> {
         let body = resp.text().unwrap();
         let fragment = Html::parse_document(&body);
 
-        let wines = Selector::parse(".item-teaser").unwrap();
+        let wines_element = Selector::parse(".item-teaser").unwrap();
 
-        println!("Page: {}", current_page);
-        for wine in fragment.select(&wines) {
-            println!("{}", get_text(&wine, ".header .item-name a"));
-            let item_name = wine
+        let mut wines = Vec::<Wine>::new();
+        for wine_element in fragment.select(&wines_element) {
+            let name = get_text(&wine_element, ".header .item-name a");
+
+            let item_name = wine_element
                 .select(&Selector::parse(".header .item-name a").unwrap())
                 .next()
                 .unwrap();
-            let wine_link = item_name.value().attr("href").unwrap();
-            println!("{}/{}", "https://www.astorwines.com", wine_link);
+            let wine_element_link = item_name.value().attr("href").unwrap();
+            let link = format!(
+                "{}/{}",
+                "https://www.astorwine_elements.com", wine_element_link
+            );
 
-            println!(
-                "Original: {}",
-                get_text(&wine, ".price-value.price-old.price-bottle").trim()
-            );
-            println!("Sale: {}", get_text(&wine, ".price-sale").trim());
-            println!("{}", get_text(&wine, ".price-bottle-discount").trim());
-            println!(
-                "{}",
-                get_text(&wine, ".item-meta.supporting-text span").trim()
-            );
-            println!();
+            let original_price =
+                get_text(&wine_element, ".price-value.price-old.price-bottle").trim();
+            let sale_price = get_text(&wine_element, ".price-sale").trim();
+            let discount = get_text(&wine_element, ".price-bottle-discount").trim();
+            let location = get_text(&wine_element, ".item-meta.supporting-text span").trim();
+
+            let wine = Wine {
+                name: name.to_string(),
+                discount: discount.to_string(),
+                original_price: original_price.to_string(),
+                sale_price: sale_price.to_string(),
+                link: link.to_string(),
+                location: location.to_string(),
+            };
+            wines.push(wine);
         }
-        println!();
 
         current_page += 1;
         if current_page > last_page {
             done = true;
+        }
+        done = true;
+
+        for wine in wines {
+            println!("{}", wine.name);
+            println!("{}", wine.original_price);
+            println!("{}", wine.sale_price);
         }
     }
     Ok(())
